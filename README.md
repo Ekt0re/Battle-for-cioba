@@ -25,4 +25,9 @@ Fasi avanzate:
 15)  AI avanzata (Tutto il mondo gioca)
 
 Extra Possibili:
+- Esportazione Windows
+- Esportazione Linux
+- Esportazione Mac
+- Esportazione Web
+- Esportazione Android
 - Multiplayer
