@@ -7,7 +7,7 @@ Obbiettivi di sviluppo:
 
 1)   Conquista stati e territori
 2)   Giorni
-3)   Ai controlla stati
+3)   AI controlla stati
 4)   Tipologie esercito
 5)   Economia
 6)   Alleanze
@@ -17,8 +17,12 @@ Obbiettivi di sviluppo:
 10)  Ottimizzazione ed esportazione + Menu
 
 Fasi avanzate:
+
 11)  Velocizzare, rallentare, bloccare il tempo
 12)  Creazione di un proprio stato e/o mondo di gioco
 13)  Selezione Difficoltà
 14)  Multilingue
-15)  Online MultyPlayer
+15)  AI avanzata (Tutto il mondo gioca)
+
+Extra Possibili:
+- Multiplayer
