@@ -15,3 +15,10 @@ Obbiettivi di sviluppo:
 8)   Scelte Politiche
 9)   Interfaccia Grafica
 10)  Ottimizzazione ed esportazione + Menu
+
+Fasi avanzate:
+11)  Velocizzare, rallentare, bloccare il tempo
+12)  Creazione di un proprio stato e/o mondo di gioco
+13)  Selezione Difficoltà
+14)  Multilingue
+15)  Online MultyPlayer
