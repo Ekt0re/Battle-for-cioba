@@ -1,5 +1,6 @@
 package battle_cioba;
 
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -198,6 +199,19 @@ public abstract class Territorio {
      */
     public void setCentro(Centro centro) {
         this.centro = centro;
+    }
+
+    /**
+     * Restituisce la posizione del territorio nella mappa.
+     * Questa è un'implementazione temporanea che verrà risolta correttamente
+     * dal metodo trovaCoordinateTerritorio nella classe Mondo.
+     * 
+     * @return null, perché la posizione è gestita da Mondo.java
+     */
+    public Point getPosizione() {
+        // Il metodo trovaCoordinateTerritorio in Mondo.java si occupa 
+        // di cercare la posizione effettiva nella matrice mappaTerritori
+        return null;
     }
 
     /* =========================== METODI UTILI =========================== */

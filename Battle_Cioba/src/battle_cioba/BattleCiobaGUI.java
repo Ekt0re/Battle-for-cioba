@@ -4,12 +4,20 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.awt.AlphaComposite;
 import java.io.File;
 import java.io.IOException;
 import javax.imageio.ImageIO;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.List;
+import java.util.ArrayList;
+import java.awt.RenderingHints;
+import java.io.BufferedReader;
+import java.io.FileReader;
+
+import battle_cioba.Centro.TipoCentro;
 
 public class BattleCiobaGUI extends JFrame {
     private Mondo mondo;
@@ -43,7 +51,18 @@ public class BattleCiobaGUI extends JFrame {
     private BufferedImage iconeBMilitare;
     
     // Dimensione delle icone rispetto alla cella
-    private static final double ICON_SIZE_RATIO = 0.8;
+    private static final double ICON_SIZE_RATIO = 1.5;
+    
+    // Soglie di zoom per la visibilità delle diverse icone
+    // La soglia indica il livello minimo di zoom necessario per rendere visibile l'icona
+    // zoomFactor parte da 1.0 (vista normale)
+    // < 1.0 = più lontano/più piccolo, > 1.0 = più vicino/più grande
+    private static final double ZOOM_VISIBILITA_CAPITALE = 0.0;  // Sempre visibile (anche con zoom molto ridotto)
+    private static final double ZOOM_VISIBILITA_CAPOLUOGO = 1.0; // Visibile con zoom normale o superiore
+    private static final double ZOOM_VISIBILITA_BASE = 2.0;      // Visibile solo con zoom alto
+    
+    // Flag per effetti visivi
+    private boolean effettoParallasse = true;
     
     /**
      * Pannello personalizzato per la visualizzazione della mappa
@@ -211,6 +230,16 @@ public class BattleCiobaGUI extends JFrame {
             }
         });
         controlPanel.add(mostraCentriBox);
+        
+        JCheckBox effettoParallasseBox = new JCheckBox("Effetto Parallasse", effettoParallasse);
+        effettoParallasseBox.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                effettoParallasse = effettoParallasseBox.isSelected();
+                mapPanel.repaint();
+            }
+        });
+        controlPanel.add(effettoParallasseBox);
         
         // Debug checkbox
         JCheckBox debugModeBox = new JCheckBox("Modalità Debug", debugMode);
@@ -596,7 +625,162 @@ public class BattleCiobaGUI extends JFrame {
             return;
         }
         
-        int statiCreati = mondo.generaStati(numStati);
+        // Leggi i dati dal file ElencoD.csv
+        List<String> nomiStati = new ArrayList<>();
+        List<String> nomiPresidenti = new ArrayList<>();
+        List<String> cognomiPresidenti = new ArrayList<>();
+        List<String> nomiCapitali = new ArrayList<>();
+        List<String> nomiCapoluoghi = new ArrayList<>();
+        
+        try {
+            // Trova il percorso corretto del file ElencoD.csv
+            String baseDir = System.getProperty("user.dir");
+            File csvFile = new File(baseDir + "/ElencoD.csv");
+            if (!csvFile.exists()) {
+                csvFile = new File(baseDir + "/Battle_Cioba/ElencoD.csv");
+                if (!csvFile.exists()) {
+                    csvFile = new File("ElencoD.csv");
+                }
+            }
+            
+            // Leggi il file
+            BufferedReader br = new BufferedReader(new FileReader(csvFile));
+            
+            // IMPORTANTE: Nel CSV, le righe sono contate da 0, non da 1
+            // Riga 0: nomi degli stati
+            String rigaStati = br.readLine();
+            if (rigaStati != null) {
+                String[] stati = rigaStati.split(",");
+                for (String stato : stati) {
+                    nomiStati.add(stato.trim());
+                }
+            }
+            
+            // Riga 1: nomi dei presidenti
+            String rigaNomiPresidenti = br.readLine();
+            if (rigaNomiPresidenti != null) {
+                String[] nomi = rigaNomiPresidenti.split(",");
+                for (String nome : nomi) {
+                    nomiPresidenti.add(nome.trim());
+                }
+            }
+            
+            // Riga 2: cognomi dei presidenti
+            String rigaCognomiPresidenti = br.readLine();
+            if (rigaCognomiPresidenti != null) {
+                String[] cognomi = rigaCognomiPresidenti.split(",");
+                for (String cognome : cognomi) {
+                    cognomiPresidenti.add(cognome.trim());
+                }
+            }
+            
+            // Riga 3: nomi delle capitali
+            String rigaCapitali = br.readLine();
+            if (rigaCapitali != null) {
+                String[] capitali = rigaCapitali.split(",");
+                for (String capitale : capitali) {
+                    nomiCapitali.add(capitale.trim());
+                }
+            }
+            
+            // Riga 4: leggiamo ma non utilizziamo (riga che contiene altro)
+            String rigaIgnorata = br.readLine();
+            System.out.println("DEBUG - Riga 4 ignorata: '" + (rigaIgnorata != null ? rigaIgnorata : "null") + "'");
+            
+            // Riga 5 (indice 4 contando da 0): nomi dei capoluoghi 
+            String rigaCapoluoghi = br.readLine();
+            if (rigaCapoluoghi != null) {
+                // Debug: stampa la riga completa letta dal file
+                System.out.println("DEBUG - Riga 5 (capoluoghi) letta dal CSV: '" + rigaCapoluoghi + "'");
+                
+                String[] capoluoghi = rigaCapoluoghi.split(",");
+                for (String capoluogo : capoluoghi) {
+                    // Controlliamo se ci sono più nomi di capoluoghi per uno stato (separati da "|")
+                    capoluogo = capoluogo.trim();
+                    System.out.println("DEBUG - Elemento capoluogo analizzato: '" + capoluogo + "'");
+                    
+                    // Non modifichiamo più i nomi numerici - usiamo i nomi originali
+                    // anche se sono solo numeri
+                    
+                    // Se troviamo un carattere "|", significa che ci sono più nomi per un singolo stato
+                    if (capoluogo.contains("|")) {
+                        // Sostituiamo "|" con ";" per mantenerli come un unico elemento nella lista
+                        // ma permettere di dividerli più tardi
+                        String[] nomiSeparati = capoluogo.split("\\|");
+                        StringBuilder nuovoCapoluogo = new StringBuilder();
+                        
+                        for (int i = 0; i < nomiSeparati.length; i++) {
+                            String nome = nomiSeparati[i].trim();
+                            // Non modifichiamo più i nomi anche se sono numerici
+                            nuovoCapoluogo.append(nome);
+                            if (i < nomiSeparati.length - 1) {
+                                nuovoCapoluogo.append(";");
+                            }
+                        }
+                        
+                        capoluogo = nuovoCapoluogo.toString();
+                        System.out.println("DEBUG - Nomi multipli elaborati: " + capoluogo);
+                    }
+                    
+                    nomiCapoluoghi.add(capoluogo);
+                }
+                
+                // Debug: stampa la lista completa dei nomi dei capoluoghi
+                System.out.println("DEBUG - Lista nomi capoluoghi dopo parsing:");
+                for (int i = 0; i < nomiCapoluoghi.size(); i++) {
+                    System.out.println("  " + i + ": '" + nomiCapoluoghi.get(i) + "'");
+                }
+            }
+            
+            br.close();
+            
+            System.out.println("Letti dal file CSV:");
+            System.out.println(" - " + nomiStati.size() + " nomi di stati");
+            System.out.println(" - " + nomiPresidenti.size() + " nomi di presidenti");
+            System.out.println(" - " + cognomiPresidenti.size() + " cognomi di presidenti");
+            System.out.println(" - " + nomiCapitali.size() + " nomi di capitali");
+            System.out.println(" - " + nomiCapoluoghi.size() + " righe di nomi di capoluoghi");
+            System.out.println("   Nota: per avere più capoluoghi per uno stato, separali con '|' nella quinta riga del file");
+            System.out.println("   Esempio: Roma,Milano|Napoli|Torino,Parigi");
+            System.out.println("   In questo caso, al secondo stato verranno assegnati 3 capoluoghi: Milano, Napoli e Torino");
+        } catch (IOException e) {
+            System.err.println("Errore nella lettura del file ElencoD.csv: " + e.getMessage());
+            e.printStackTrace();
+        }
+        
+        // Genera nomi generici se non ce ne sono abbastanza nei file
+        if (nomiStati.isEmpty()) {
+            for (int i = 0; i < numStati; i++) {
+                nomiStati.add("Stato_" + (i + 1));
+            }
+        }
+        
+        if (nomiPresidenti.isEmpty()) {
+            for (int i = 0; i < numStati; i++) {
+                nomiPresidenti.add("Presidente_" + (i + 1));
+            }
+        }
+        
+        if (cognomiPresidenti.isEmpty()) {
+            for (int i = 0; i < numStati; i++) {
+                cognomiPresidenti.add("Cognome_" + (i + 1));
+            }
+        }
+        
+        if (nomiCapitali.isEmpty()) {
+            for (int i = 0; i < numStati; i++) {
+                nomiCapitali.add("Capitale_" + (i + 1));
+            }
+        }
+        
+        if (nomiCapoluoghi.isEmpty()) {
+            for (int i = 0; i < numStati; i++) {
+                nomiCapoluoghi.add("Capoluogo_" + (i + 1));
+            }
+        }
+        
+        // Passa i nomi al metodo del mondo per generare gli stati
+        int statiCreati = mondo.generaStati(numStati, nomiStati, nomiPresidenti, cognomiPresidenti, nomiCapitali, nomiCapoluoghi);
         generaColoriPerStati(); // Aggiorna i colori per i nuovi stati
         mapPanel.repaint(); // Ridisegna la GUI
         
@@ -697,6 +881,9 @@ public class BattleCiobaGUI extends JFrame {
         // Verifica quali celle sono null
         int contatoreNull = 0;
         
+        // Lista per tenere traccia dei centri da disegnare sopra la griglia
+        List<CentroVisualizzato> centriDaDisegnare = new ArrayList<>();
+        
         try {
             for (int i = 0; i < righe; i++) {
                 for (int j = 0; j < colonne; j++) {
@@ -776,60 +963,27 @@ public class BattleCiobaGUI extends JFrame {
                                      y + (cellSize + fm.getAscent()) / 2);
                     }
                     
-                    // Se questo territorio ha un centro, mostralo con l'icona corrispondente
+                    // Invece di disegnare le icone qui, le collezioniamo per disegnarle dopo
                     if (mostraCentri && t.getCentro() != null) {
-                        // Dimensione dell'icona in base allo zoom
-                        // La dimensione dell'icona è adattata in base allo zoom, ma con un limite minimo e massimo
-                        int minIconSize = 12; // Dimensione minima dell'icona
-                        int maxIconSize = 40; // Dimensione massima dell'icona
-                        
-                        // Calcola la dimensione dell'icona in base al cellSize e allo zoom
-                        int baseIconSize = (int)(cellSize * ICON_SIZE_RATIO);
-                        int iconSize = Math.min(maxIconSize, Math.max(minIconSize, baseIconSize));
-                        
-                        // Se lo zoom è molto piccolo, le icone potrebbero essere più grandi delle celle
-                        // In questo caso, manteniamo le icone in proporzione alla dimensione delle celle
-                        if (zoomFactor < 1.0 && iconSize > cellSize) {
-                            iconSize = Math.max(minIconSize, cellSize);
-                        }
-                        
-                        // Posiziona l'icona al centro della cella
-                        int iconX = x + (cellSize - iconSize) / 2;
-                        int iconY = y + (cellSize - iconSize) / 2;
-                        
                         Centro centro = t.getCentro();
                         BufferedImage iconaDaUsare = null;
+                        boolean mostraIcona = false;
                         
-                        // Scegli l'icona in base al tipo di centro
+                        // Scegli l'icona in base al tipo di centro e verifica se deve essere mostrata in base allo zoom
                         if (centro instanceof Capitale) {
                             iconaDaUsare = iconeCapitale;
+                            mostraIcona = zoomFactor >= ZOOM_VISIBILITA_CAPITALE; // Sempre visibile
                         } else if (centro instanceof Capoluogo) {
                             iconaDaUsare = iconeCapoluogo;
+                            mostraIcona = zoomFactor >= ZOOM_VISIBILITA_CAPOLUOGO; // Visibile con zoom normale
                         } else if (centro instanceof BaseMilitare) {
                             iconaDaUsare = iconeBMilitare;
+                            mostraIcona = zoomFactor >= ZOOM_VISIBILITA_BASE; // Visibile solo con zoom alto
                         }
                         
-                        if (iconaDaUsare != null) {
-                            // Disegna l'icona
-                            g.drawImage(iconaDaUsare, iconX, iconY, iconSize, iconSize, null);
-                            
-                            // Se lo zoom è sufficiente, mostra anche il nome del centro
-                            if (zoomFactor > 1.5) {
-                                g.setColor(Color.BLACK);
-                                g.setFont(new Font("Arial", Font.BOLD, 10));
-                                String nomeCentro = centro.getNome();
-                                // Limita la lunghezza del nome per evitare sovrapposizioni
-                                if (nomeCentro.length() > 10) {
-                                    nomeCentro = nomeCentro.substring(0, 8) + "...";
-                                }
-                                FontMetrics fm = g.getFontMetrics();
-                                int textWidth = fm.stringWidth(nomeCentro);
-                                
-                                // Posiziona il testo sotto l'icona
-                                g.drawString(nomeCentro, 
-                                           x + (cellSize - textWidth) / 2, 
-                                           y + cellSize + fm.getAscent());
-                            }
+                        if (iconaDaUsare != null && mostraIcona) {
+                            // Aggiungi il centro alla lista dei centri da disegnare
+                            centriDaDisegnare.add(new CentroVisualizzato(centro, iconaDaUsare, x, y));
                         }
                     }
                     // Se questo territorio è una capitale, marcalo (per compatibilità con codice esistente)
@@ -843,6 +997,28 @@ public class BattleCiobaGUI extends JFrame {
                     }
                 }
             }
+            
+            // Ora disegniamo tutti i centri, in ordine di importanza (prima basi militari, poi capoluoghi, infine capitali)
+            // Questo garantisce che le capitali siano sempre disegnate sopra tutto il resto
+            centriDaDisegnare.sort((a, b) -> {
+                if (a.centro instanceof Capitale && !(b.centro instanceof Capitale)) {
+                    return 1;
+                } else if (!(a.centro instanceof Capitale) && b.centro instanceof Capitale) {
+                    return -1;
+                } else if (a.centro instanceof Capoluogo && !(b.centro instanceof Capoluogo)) {
+                    return 1;
+                } else if (!(a.centro instanceof Capoluogo) && b.centro instanceof Capoluogo) {
+                    return -1;
+                }
+                return 0;
+            });
+            
+            // Disegna ogni centro
+            for (CentroVisualizzato centroVis : centriDaDisegnare) {
+                // Usa il nostro metodo migliorato per disegnare il centro
+                disegnaCentro((Graphics2D)g, centroVis.centro, centroVis.x, centroVis.y, cellSize);
+            }
+            
         } catch (Exception e) {
             System.err.println("DEBUG: Eccezione durante il disegno della mappa: " + e.getMessage());
             e.printStackTrace();
@@ -884,6 +1060,7 @@ public class BattleCiobaGUI extends JFrame {
             for (int i = 0; i < mappaTerritori.length; i++) {
                 for (int j = 0; j < mappaTerritori[0].length; j++) {
                     Territorio t = mappaTerritori[i][j];
+                    // Assicuriamoci che i territori siano terrestri (non acquatici)
                     if (t != null && !t.isAcqua() && t.getStatoPadrone() == null) {
                         if (territorioCapitale == null) {
                             territorioCapitale = t;
@@ -1079,5 +1256,147 @@ public class BattleCiobaGUI extends JFrame {
         g.drawOval(4, 4, 24, 24);
         g.dispose();
         return img;
+    }
+    
+    /**
+     * Classe privata per rappresentare un centro da visualizzare con le sue coordinate
+     */
+    private class CentroVisualizzato {
+        Centro centro;
+        BufferedImage icona;
+        int x, y;
+        
+        public CentroVisualizzato(Centro centro, BufferedImage icona, int x, int y) {
+            this.centro = centro;
+            this.icona = icona;
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    /**
+     * Disegna i centri (capitali, capoluoghi, basi militari) sulla mappa.
+     * 
+     * @param g contesto grafico
+     * @param centro centro da disegnare
+     * @param x coordinata x
+     * @param y coordinata y
+     * @param cellRealSize dimensione della cella in pixel
+     */
+    private void disegnaCentro(Graphics2D g, Centro centro, int x, int y, int cellRealSize) {
+        BufferedImage icona = null;
+        int offsetX = 0;
+        int offsetY = 0;
+        Color coloreShadow = new Color(0,0,0,100);
+        int dimensioneIcona = 32;
+        String etichetta = "";
+        
+        // Verifica che il nome non sia solo un numero
+        String nomeCentro = centro.getNome();
+        
+        // Debug per capire cosa sta succedendo
+        System.out.println("DEBUG - Centro da disegnare: " + nomeCentro + " di tipo " + centro.getTipo());
+        
+        // Per i capoluoghi, non mostriamo alcuna etichetta
+        if (centro instanceof Capoluogo) {
+            // Non impostiamo l'etichetta per i capoluoghi
+            etichetta = "";
+        }
+        // Per le capitali e le basi, manteniamo il comportamento originale
+        else {
+            // Estrai il nome reale del centro
+            if (nomeCentro.contains("_")) {
+                // Estrae l'ultima parte del nome dopo l'ultimo underscore
+                String[] parti = nomeCentro.split("_");
+                if (parti.length > 0) {
+                    etichetta = parti[parti.length - 1];
+                    
+                    // Se l'etichetta è solo un numero, usiamo tutto il nome
+                    if (etichetta.matches("\\d+")) {
+                        // Se il nome intero contiene una parola riconoscibile, la usiamo
+                        for (String parte : parti) {
+                            if (parte.length() > 3 && !parte.matches("\\d+")) {
+                                etichetta = parte;
+                                break;
+                            }
+                        }
+                        
+                        // Se ancora non abbiamo un'etichetta valida, usiamo un prefisso + numero
+                        if (etichetta.matches("\\d+")) {
+                            if (centro.getTipo() == TipoCentro.CAPITALE) {
+                                etichetta = "Capitale " + etichetta;
+                            } else {
+                                etichetta = "Base " + etichetta;
+                            }
+                        }
+                    }
+                }
+            } else {
+                etichetta = nomeCentro;
+                
+                // Se l'etichetta è solo un numero, aggiungiamo un prefisso
+                if (etichetta.matches("\\d+")) {
+                    if (centro.getTipo() == TipoCentro.CAPITALE) {
+                        etichetta = "Capitale " + etichetta;
+                    } else {
+                        etichetta = "Base " + etichetta;
+                    }
+                }
+            }
+        }
+        
+        // Scegli l'icona appropriata in base al tipo di centro
+        if (centro instanceof Capitale) {
+            icona = iconeCapitale;
+            dimensioneIcona = 48; // Dimensione maggiore per le capitali
+        } else if (centro instanceof Capoluogo) {
+            icona = iconeCapoluogo;
+            dimensioneIcona = 40; // Dimensione media per i capoluoghi
+        } else {
+            icona = iconeBMilitare;
+            dimensioneIcona = 32; // Dimensione standard per le basi
+        }
+        
+        // Se non abbiamo un'icona specifica, usiamo una fallback
+        if (icona == null) {
+            icona = creaIconaSegnaposto(Color.BLUE);
+        }
+        
+        // Calcola la posizione per centrare l'icona nella cella
+        int iconX = x + (cellRealSize - dimensioneIcona) / 2;
+        int iconY = y + (cellRealSize - dimensioneIcona) / 2;
+        
+        // Disegna un'ombra sotto l'icona per farla risaltare
+        g.setColor(coloreShadow);
+        g.fillOval(iconX + 2, iconY + 2, dimensioneIcona, dimensioneIcona);
+        
+        // Disegna l'icona
+        g.drawImage(icona, iconX, iconY, dimensioneIcona, dimensioneIcona, null);
+        
+        // Disegna l'etichetta solo se non è vuota (quindi non per i capoluoghi)
+        if (!etichetta.isEmpty()) {
+            g.setColor(Color.BLACK);
+            g.setFont(new Font("Arial", Font.BOLD, 12));
+            FontMetrics fm = g.getFontMetrics();
+            int textWidth = fm.stringWidth(etichetta);
+            
+            // Crea uno sfondo per il testo
+            int textBgWidth = textWidth + 6;
+            int textBgHeight = fm.getHeight() + 2;
+            int textBgX = iconX + (dimensioneIcona - textBgWidth) / 2;
+            int textBgY = iconY + dimensioneIcona + 2;
+            
+            // Disegna lo sfondo con angoli arrotondati
+            g.setColor(new Color(255, 255, 255, 200));
+            g.fillRoundRect(textBgX, textBgY, textBgWidth, textBgHeight, 8, 8);
+            g.setColor(Color.DARK_GRAY);
+            g.drawRoundRect(textBgX, textBgY, textBgWidth, textBgHeight, 8, 8);
+            
+            // Disegna il testo centrato nello sfondo
+            g.setColor(Color.BLACK);
+            g.drawString(etichetta, 
+                        textBgX + (textBgWidth - textWidth) / 2, 
+                        textBgY + fm.getAscent() + 1);
+        }
     }
 }
