@@ -4,17 +4,32 @@
  */
 package battle_cioba;
 
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+
 /**
- *
+ * Classe principale dell'applicazione Battle Cioba.
  * @author hp
  */
 public class Battle_Cioba {
 
     /**
+     * Metodo main per avviare l'applicazione.
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here
+        // Avvia l'interfaccia grafica nell'Event Dispatch Thread
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new BattleCiobaGUI();
+            }
+        });
     }
     
 }

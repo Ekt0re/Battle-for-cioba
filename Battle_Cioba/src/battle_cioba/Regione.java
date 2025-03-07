@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * Classe che rappresenta una Regione, contenente uno o più Territori.
  */
-class Regione {
+public class Regione {
 
     /**
      * Contatore statico per ID univoci di Regione.
@@ -79,9 +79,17 @@ class Regione {
     }
 
     public void setCapoluogo(Territorio capoluogo) {
+        // Se c'era già un capoluogo precedente, rimuovi il flag di capitale
+        if (this.capoluogo != null) {
+            this.capoluogo.setCapitale(false);
+        }
+        
+        // Imposta il nuovo capoluogo
         this.capoluogo = capoluogo;
-        if (capoluogo != null && !territori.contains(capoluogo)) {
-            territori.add(capoluogo);
+        
+        // Marca il nuovo territorio come capitale
+        if (capoluogo != null) {
+            capoluogo.setCapitale(true);
         }
     }
 
@@ -118,6 +126,9 @@ class Regione {
     public void addTerritorio(Territorio territorio) {
         if (territorio != null && !territori.contains(territorio)) {
             territori.add(territorio);
+            
+            // Imposta la regione di appartenenza
+            territorio.setRegione(this.getNome());
         }
     }
 

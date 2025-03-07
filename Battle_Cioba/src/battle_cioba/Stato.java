@@ -7,7 +7,7 @@ import java.util.Objects;
 /**
  * Classe che rappresenta uno Stato, contenente più Regioni.
  */
-class Stato {
+public class Stato {
 
     /**
      * Contatore statico per ID univoci di Stato.
@@ -123,9 +123,22 @@ class Stato {
     }
 
     public void setCapitale(Regione capitale) {
+        // Se c'era già una capitale precedente, rimuovi il flag
+        if (this.capitale != null && this.capitale.getCapoluogo() != null) {
+            this.capitale.getCapoluogo().setCapitale(false);
+        }
+        
+        // Imposta la nuova capitale
         this.capitale = capitale;
+        
+        // Aggiungi la regione alla lista delle regioni se non è già presente
         if (capitale != null && !regioni.contains(capitale)) {
             regioni.add(capitale);
+            
+            // Imposta il capoluogo della regione come territorio capitale
+            if (capitale.getCapoluogo() != null) {
+                capitale.getCapoluogo().setCapitale(true);
+            }
         }
     }
 
@@ -178,5 +191,12 @@ class Stato {
                 + " | Numero regioni: " + regioni.size()
                 + " | Opposizione: " + opposizione);
     }
+
+    public Territorio[] getTerritori() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getTerritori'");
+    }
+
+ 
 }
 

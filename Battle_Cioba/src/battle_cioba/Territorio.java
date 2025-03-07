@@ -57,6 +57,16 @@ public abstract class Territorio {
     protected int countBasiMilitari = 0;
 
     /**
+     * Indica se questo territorio è una capitale.
+     */
+    protected boolean capitale = false;
+
+    /**
+     * Centro principale nel territorio (Capitale, Capoluogo, ecc.)
+     */
+    protected Centro centro;
+
+    /**
      * Costruttore astratto. Le sottoclassi dovranno chiamare super(...) per istanziare correttamente il Territorio.
      *
      * @param name         nome del territorio
@@ -162,6 +172,32 @@ public abstract class Territorio {
 
     public void setCountBasiMilitari(int countBasiMilitari) {
         this.countBasiMilitari = countBasiMilitari;
+    }
+
+    public boolean isCapitale() {
+        return capitale;
+    }
+
+    public void setCapitale(boolean capitale) {
+        this.capitale = capitale;
+    }
+
+    /**
+     * Ottiene il centro principale del territorio.
+     * 
+     * @return oggetto Centro
+     */
+    public Centro getCentro() {
+        return centro;
+    }
+    
+    /**
+     * Imposta il centro principale del territorio.
+     * 
+     * @param centro oggetto Centro da impostare
+     */
+    public void setCentro(Centro centro) {
+        this.centro = centro;
     }
 
     /* =========================== METODI UTILI =========================== */
