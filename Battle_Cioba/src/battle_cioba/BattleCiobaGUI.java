@@ -289,13 +289,16 @@ public class BattleCiobaGUI extends JFrame {
      * @param panel il pannello a cui aggiungere le interazioni
      */
     private void setupMapInteractions(JPanel panel) {
-        // Mouse listener for panning (right mouse button)
+        // Mouse listener for panning (right mouse button) and state selection (left mouse button)
         panel.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
                 if (SwingUtilities.isRightMouseButton(e)) {
                     startPoint = e.getPoint();
                     panel.setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
+                } else if (SwingUtilities.isLeftMouseButton(e)) {
+                    // Click sinistro per selezionare uno stato
+                    gestioneClickStato(e);
                 }
             }
             
@@ -1398,5 +1401,146 @@ public class BattleCiobaGUI extends JFrame {
                         textBgX + (textBgWidth - textWidth) / 2, 
                         textBgY + fm.getAscent() + 1);
         }
+    }
+
+    /**
+     * Gestisce il click su uno stato nella mappa.
+     * Identifica lo stato cliccato e mostra un menu contestuale con le opzioni.
+     * 
+     * @param e l'evento del mouse
+     */
+    private void gestioneClickStato(MouseEvent e) {
+        if (mondo == null || mondo.getMappaTerritori() == null) {
+            return;
+        }
+        
+        try {
+            // Converti le coordinate del mouse in coordinate della mappa
+            int cellRealSize = (int) (cellSize * zoomFactor);
+            int mapX = (int) ((e.getX() - viewPosition.x) / zoomFactor);
+            int mapY = (int) ((e.getY() - viewPosition.y) / zoomFactor);
+            
+            // Converti le coordinate in indici della mappa
+            int j = mapX / cellSize;
+            int i = mapY / cellSize;
+            
+            // Verifica che le coordinate siano all'interno della mappa
+            Territorio[][] mappaTerritori = mondo.getMappaTerritori();
+            if (i >= 0 && i < mappaTerritori.length && j >= 0 && j < mappaTerritori[0].length) {
+                Territorio t = mappaTerritori[i][j];
+                
+                if (t != null && !t.isAcqua() && t.getStatoPadrone() != null) {
+                    String nomeStato = t.getStatoPadrone();
+                    
+                    // Cerca l'oggetto Stato corrispondente al nome
+                    Stato statoSelezionato = trovaStatoDaNome(nomeStato);
+                    
+                    // Se non troviamo l'oggetto Stato, mostriamo comunque il menu con opzioni limitate
+                    boolean statoTrovato = (statoSelezionato != null);
+                    
+                    // Crea il popup menu
+                    JPopupMenu popupMenu = new JPopupMenu();
+                    
+                    // Opzione "Informazioni"
+                    JMenuItem itemInfo = new JMenuItem("Informazioni");
+                    itemInfo.setEnabled(statoTrovato);
+                    if (statoTrovato) {
+                        // Se abbiamo l'oggetto Stato, colleghiamo l'azione per aprire il dialogo
+                        Stato statoFinale = statoSelezionato; // variabile finale per lambda
+                        itemInfo.addActionListener(ev -> mostraInfoStato(statoFinale));
+                    } else {
+                        // Altrimenti, mostriamo un messaggio che spiega che non è possibile visualizzare le informazioni
+                        itemInfo.addActionListener(ev -> {
+                            JOptionPane.showMessageDialog(this, 
+                                "Impossibile trovare le informazioni complete per lo stato: " + nomeStato, 
+                                "Informazioni non disponibili",
+                                JOptionPane.WARNING_MESSAGE);
+                        });
+                    }
+                    popupMenu.add(itemInfo);
+                    
+                    // Opzione "Statistiche militari" (esempio, puoi aggiungere altre opzioni)
+                    JMenuItem itemStatistiche = new JMenuItem("Statistiche militari");
+                    itemStatistiche.setEnabled(statoTrovato);
+                    if (statoTrovato) {
+                        Stato statoFinale = statoSelezionato; // variabile finale per lambda
+                        itemStatistiche.addActionListener(ev -> {
+                            JOptionPane.showMessageDialog(this, 
+                                "Potenza militare: " + statoFinale.getPotenza(), 
+                                "Statistiche militari - " + statoFinale.getNome(),
+                                JOptionPane.INFORMATION_MESSAGE);
+                        });
+                    }
+                    popupMenu.add(itemStatistiche);
+                    
+                    // Opzione "Diplomazia" (esempio)
+                    JMenuItem itemDiplomazia = new JMenuItem("Diplomazia");
+                    itemDiplomazia.setEnabled(statoTrovato);
+                    if (statoTrovato) {
+                        itemDiplomazia.addActionListener(ev -> {
+                            JOptionPane.showMessageDialog(this, 
+                                "Funzionalità di diplomazia non ancora implementata", 
+                                "Diplomazia",
+                                JOptionPane.INFORMATION_MESSAGE);
+                        });
+                    }
+                    popupMenu.add(itemDiplomazia);
+                    
+                    // Aggiungi un separatore
+                    popupMenu.addSeparator();
+                    
+                    // Visualizza il nome dello stato come elemento non cliccabile
+                    JMenuItem labelStato = new JMenuItem("Stato: " + nomeStato);
+                    labelStato.setEnabled(false);
+                    popupMenu.add(labelStato);
+                    
+                    // Mostra il popup menu
+                    popupMenu.show(e.getComponent(), e.getX(), e.getY());
+                }
+            }
+        } catch (Exception ex) {
+            System.err.println("Errore durante il click sulla mappa: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }
+    
+    /**
+     * Cerca uno stato nella lista degli stati del mondo in base al nome.
+     * 
+     * @param nomeStato il nome dello stato da cercare
+     * @return l'oggetto Stato corrispondente o null se non trovato
+     */
+    private Stato trovaStatoDaNome(String nomeStato) {
+        if (nomeStato == null || mondo == null) {
+            return null;
+        }
+        
+        // Ottieni la lista degli stati dal mondo
+        List<Stato> stati = mondo.getStati();
+        if (stati == null) {
+            return null;
+        }
+        
+        // Cerca lo stato con il nome specificato
+        for (Stato stato : stati) {
+            if (nomeStato.equals(stato.getNome())) {
+                return stato;
+            }
+        }
+        
+        return null; // Non trovato
+    }
+    
+    /**
+     * Mostra la finestra di dialogo con le informazioni dello stato.
+     * 
+     * @param stato lo stato di cui visualizzare le informazioni
+     */
+    private void mostraInfoStato(Stato stato) {
+        if (stato == null) return;
+        
+        // Crea e mostra il dialogo InfoStato
+        InfoStato dialog = new InfoStato(this, true, stato);
+        dialog.setVisible(true);
     }
 }
