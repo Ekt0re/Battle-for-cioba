@@ -1,3 +1,7 @@
+# Battle For Cioba!
+
+Un gioco strategico in stile HOI4 in java.
+
 BrainStoarm
 
 https://wbd.ms/share/v2/aHR0cHM6Ly93aGl0ZWJvYXJkLm1pY3Jvc29mdC5jb20vYXBpL3YxLjAvd2hpdGVib2FyZHMvcmVkZWVtLzAyYjYxNDlhMTNmYTQyOGJiMDY3YjMxZjVlYjk4MzNmX0JCQTcxNzYyLTEyRTAtNDJFMS1CMzI0LTVCMTMxRjQyNEUzRF9iMDFjMjJjZi03OGY0LTRiMjItYTg4MS0yOTYxYWYxZjRmNTQ=
